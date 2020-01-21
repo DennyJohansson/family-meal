@@ -1,35 +1,25 @@
-import React from "react";
-import { useQuery } from "@apollo/react-hooks";
-import gql from "graphql-tag";
+import React, { useState, useLayoutEffect, useEffect } from "react";
+import dishStore from "./../../store";
 
-export const HISTORY_DISHES = gql`
-  query {
-    dishes(searchString: "HISTORY") {
-      id
-      status
-      content
-      author {
-        id
-        name
-      }
-    }
-  }
-`;
+const Dishes = () => {
+  const [dishes, setDishes] = useState(dishStore.initialState);
 
-export default () => {
-  const { loading, error, data } = useQuery(HISTORY_DISHES);
-
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error :(</p>;
+  useLayoutEffect(() => {
+    console.log("asdasdsad");
+    dishStore.subscribe(setDishes);
+  }, []);
+  console.log(dishes);
   // add rxjs
   return (
     <div>
       <h1>Histroy dishes</h1>
       <ul>
-        {data.dishes.map(dish => (
+        {dishes.HISTORY.map(dish => (
           <li key={dish.id}>{dish.content}</li>
         ))}
       </ul>
     </div>
   );
 };
+
+export default Dishes;

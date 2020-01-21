@@ -1,32 +1,39 @@
-import React from "react";
-import { either, filter, compose, equals, prop } from "ramda";
+import React, { useState, useLayoutEffect, useEffect } from "react";
 import { useQuery } from "@apollo/react-hooks";
+import dishStore from "./../../store";
 
 import { ALL_DISHES } from "./menu.graphql";
 
-const filterByStatusTodoAndDone = filter(
-  compose(either(equals("DONE"), equals("TODO")), prop("status"))
-);
-
 export default () => {
-  const { loading, error, data } = useQuery(ALL_DISHES);
+  const [dishes, setDishes] = useState(dishStore.initialState);
+  const { data, loading } = useQuery(ALL_DISHES);
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error :(</p>;
+  useLayoutEffect(() => {
+    dishStore.subscribe(setDishes);
+    dishStore.init();
+  }, []);
 
-  const todoAndDoneDishes = filterByStatusTodoAndDone(data.dishes);
+  useEffect(() => {
+    if (!loading && data && data.dishes !== dishes) {
+      dishStore.addDishes(data.dishes);
+    }
+  }, [data]);
 
   return (
     <div>
       <h1>Menu</h1>
       <h3>dishes that is in todo and done</h3>
       <ul>
-        {todoAndDoneDishes.map(dish => (
+        {dishes.TODO.map(dish => (
           <li key={dish.id}>
             {JSON.stringify(dish.content, null, 2)}
-            <button>
-              {dish.status === "TODO" ? "move to done" : "move to history"}!
-            </button>
+            <button>todo</button>
+          </li>
+        ))}
+        {dishes.DONE.map(dish => (
+          <li key={dish.id}>
+            {JSON.stringify(dish.content, null, 2)}
+            <button>done</button>
           </li>
         ))}
       </ul>
