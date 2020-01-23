@@ -1,25 +1,51 @@
 import React, { useState, useLayoutEffect, useEffect } from "react";
-import dishStore from "./../../store";
+import dishes$ from "./../../store";
+import { useQuery } from "@apollo/react-hooks";
 
-const Dishes = () => {
-  const [dishes, setDishes] = useState(dishStore.initialState);
+import { ALL_DISHES } from "./Dishes.graphql";
+export default () => {
+  const [dishes, setDishes] = useState(dishes$.initialState);
+  const { data, loading } = useQuery(ALL_DISHES);
+  const { TODO, DONE, HISTORY } = dishes;
 
   useLayoutEffect(() => {
-    console.log("asdasdsad");
-    dishStore.subscribe(setDishes);
+    dishes$.init();
+    dishes$.subscribe(setDishes);
   }, []);
-  console.log(dishes);
-  // add rxjs
+
+  useEffect(() => {
+    if (!loading && data && data.dishes) {
+      dishes$.addDishes(data.dishes);
+    }
+  }, [data, loading]);
+
   return (
     <div>
-      <h1>Histroy dishes</h1>
+      <h1>FAMILY DISHES</h1>
+      <h3>dishes that is in todo and done</h3>
       <ul>
-        {dishes.HISTORY.map(dish => (
-          <li key={dish.id}>{dish.content}</li>
+        {TODO.map(dish => (
+          <li key={dish.id}>
+            {JSON.stringify(dish.content, null, 2)}
+            <button>todo</button>
+          </li>
+        ))}
+        {DONE.map(dish => (
+          <li key={dish.id}>
+            {JSON.stringify(dish.content, null, 2)}
+            <button>done</button>
+          </li>
+        ))}
+      </ul>
+      <h3>dishes that is in history</h3>
+      <ul>
+        {HISTORY.map(dish => (
+          <li key={dish.id}>
+            {JSON.stringify(dish.content, null, 2)}
+            <button>history</button>
+          </li>
         ))}
       </ul>
     </div>
   );
 };
-
-export default Dishes;

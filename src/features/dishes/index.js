@@ -1,1 +1,1 @@
-export { default } from './Dishes'
+export { default } from "./Dishes";

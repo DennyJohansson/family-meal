@@ -4,13 +4,10 @@ import { groupBy } from "ramda";
 const subject = new Subject();
 
 const initialState = { TODO: [], DONE: [], HISTORY: [] };
-
 let state = initialState;
 
-const dishStore = {
-  init: () => {
-    subject.next(state);
-  },
+const dishes$ = {
+  init: () => subject.next(initialState),
   subscribe: setState => subject.subscribe(setState),
   addDishes: dishes => {
     state = groupBy(dish => dish.status, dishes);
@@ -26,4 +23,4 @@ const dishStore = {
   initialState
 };
 
-export default dishStore;
+export default dishes$;
