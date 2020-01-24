@@ -5,7 +5,7 @@ const subject = new Subject();
 
 const initialState = { TODO: [], DONE: [], HISTORY: [] };
 let state = initialState;
-
+// use lenses
 const dishes$ = {
   init: () => subject.next(initialState),
   subscribe: setState => subject.subscribe(setState),
