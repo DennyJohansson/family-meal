@@ -1,16 +1,17 @@
 import { Subject } from "rxjs";
-import { groupBy } from "ramda";
+import { groupBy, prop } from "ramda";
 
 const subject = new Subject();
 
 const initialState = { TODO: [], DONE: [], HISTORY: [] };
 let state = initialState;
+const groupByStatus = groupBy(prop("status"));
 // use lenses
 const dishes$ = {
   init: () => subject.next(initialState),
   subscribe: setState => subject.subscribe(setState),
-  addDishes: dishes => {
-    state = groupBy(dish => dish.status, dishes);
+  updateDishes: dishes => {
+    state = groupByStatus(dishes);
     subject.next(state);
   },
   addDish: dish => {

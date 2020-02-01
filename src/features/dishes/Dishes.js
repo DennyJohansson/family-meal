@@ -1,21 +1,41 @@
-import React, { useState, useLayoutEffect, useEffect } from "react";
-import { path } from "ramda";
+import { useState, useLayoutEffect, useEffect } from "react";
+/** @jsx jsx */
+import { jsx } from "@emotion/core";
+import { concat } from "ramda";
 import dishes$ from "./../../store";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import { useForm } from "react-hook-form";
 
-import { ALL_DISHES, ADD_DISH } from "./Dishes.graphql";
+import { ALL_DISHES, ADD_DISH, CHANGE_STATUS } from "./Dishes.graphql";
+
 export default () => {
+  const updateCache = (cache, { data }) => {
+    const existingDishes = cache.readQuery({
+      query: ALL_DISHES
+    });
+
+    const newDish = data.createDish;
+
+    cache.writeQuery({
+      query: ALL_DISHES,
+      data: { dishes: [newDish, ...existingDishes.dishes] }
+    });
+  };
   const [addDishInputValue, setAddDishInputValue] = useState("");
   const [dishes, setDishes] = useState(dishes$.initialState);
+
   const { data: dishData, loading } = useQuery(ALL_DISHES);
-  const [addDish, { data: addDishData }] = useMutation(ADD_DISH);
+  const [addDish] = useMutation(ADD_DISH, { update: updateCache });
+  const [changeStatus] = useMutation(CHANGE_STATUS);
+
   const { TODO, DONE, HISTORY } = dishes;
   const { register, handleSubmit, errors } = useForm();
 
+  console.log("state changed", dishes);
+
   const onSubmit = ({ addDishInput }) => {
     // TODO: change id to current login user
-    setAddDishInputValue("");
+
     addDish({
       variables: {
         authorId: "ck5lgp68800090746h4ychbxb",
@@ -23,23 +43,29 @@ export default () => {
         content: addDishInput
       }
     });
+    setAddDishInputValue("");
+  };
+
+  const onClickStatus = (id, status) => {
+    changeStatus({
+      variables: {
+        id,
+        status
+      }
+    });
   };
 
   useLayoutEffect(() => {
+    console.log("useLayoutEffect");
     dishes$.init();
     dishes$.subscribe(setDishes);
   }, []);
 
   useEffect(() => {
-    const addDish = path(["createDish"], addDishData);
-    if (addDish) {
-      dishes$.addDish(addDish);
-    }
-  }, [addDishData]);
-
-  useEffect(() => {
+    console.log(dishData);
     if (!loading && dishData && dishData.dishes) {
-      dishes$.addDishes(dishData.dishes);
+      console.log("updateDishes");
+      dishes$.updateDishes(dishData.dishes);
     }
   }, [dishData, loading]);
 
@@ -48,26 +74,14 @@ export default () => {
       <h1>FAMILY DISHES</h1>
       <h3>dishes that is in todo and done</h3>
       <ul>
-        {TODO.map(dish => (
-          <li key={dish.id}>
-            {JSON.stringify(dish.content, null, 2)}
-            <button>todo</button>
-          </li>
-        ))}
-        {DONE.map(dish => (
-          <li key={dish.id}>
-            {JSON.stringify(dish.content, null, 2)}
-            <button>done</button>
-          </li>
+        {concat(TODO || [], DONE || []).map(dish => (
+          <Dish key={dish.id} onClick={onClickStatus} dish={dish} />
         ))}
       </ul>
       <h3>dishes that is in history</h3>
       <ul>
         {HISTORY.map(dish => (
-          <li key={dish.id}>
-            {JSON.stringify(dish.content, null, 2)}
-            <button>history</button>
-          </li>
+          <Dish key={dish.id} onClick={() => null} dish={dish} />
         ))}
       </ul>
       <h3>add a dish!</h3>
@@ -82,5 +96,26 @@ export default () => {
         <input type="submit" />
       </form>
     </div>
+  );
+};
+
+const Dish = ({ dish, onClick }) => {
+  const { id, title, content, status } = dish;
+  const { color, nextStatus } = {
+    TODO: { color: "blue", nextStatus: "DONE" },
+    DONE: { color: "green", nextStatus: "HISTORY" },
+    HISTORY: { color: "red", nextStatus: null }
+  }[status];
+
+  return (
+    <li
+      css={{
+        color
+      }}
+    >
+      {title}
+      {JSON.stringify(content, null, 2)}
+      <button onClick={() => onClick(id, nextStatus)}>{status}</button>
+    </li>
   );
 };
