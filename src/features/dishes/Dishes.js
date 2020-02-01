@@ -1,59 +1,11 @@
-import { useState, useEffect, useReducer } from "react";
-import { groupBy, prop } from "ramda";
+import { useState } from "react";
 /** @jsx jsx */
 import { jsx } from "@emotion/core";
 import { concat } from "ramda";
-import { useQuery, useMutation } from "@apollo/react-hooks";
 import { useForm } from "react-hook-form";
+import useDishes from "hooks/useDishes";
+import Dish from "./Dish";
 
-import { ALL_DISHES, ADD_DISH, CHANGE_STATUS } from "./Dishes.graphql";
-
-const initialState = { TODO: [], DONE: [], HISTORY: [] };
-
-const reducer = (state, action) => {
-  switch (action.type) {
-    case "update":
-      return groupBy(prop("status"), action.payload);
-    // case 'addDish':
-    //   return mergeWith(concat, state, groupBy(prop('status'))([action.payload]))
-    default:
-      throw new Error();
-  }
-};
-
-const useDishes = () => {
-  const updateCache = (cache, { data }) => {
-    const existingDishes = cache.readQuery({
-      query: ALL_DISHES
-    });
-
-    const newDish = data.createDish;
-
-    cache.writeQuery({
-      query: ALL_DISHES,
-      data: { dishes: [newDish, ...existingDishes.dishes] }
-    });
-  };
-  const [dishes, dispatch] = useReducer(reducer, initialState);
-  const { data, loading, error } = useQuery(ALL_DISHES);
-  const [addDish] = useMutation(ADD_DISH, { update: updateCache });
-  const [changeStatus] = useMutation(CHANGE_STATUS);
-
-  useEffect(() => {
-    if (!loading && data && data.dishes) {
-      console.log(data, loading);
-      dispatch({ type: "update", payload: data.dishes });
-    }
-  }, [loading, data]);
-
-  return {
-    addDish,
-    changeStatus,
-    dishes,
-    loading,
-    error
-  };
-};
 export default () => {
   const {
     addDish,
@@ -62,6 +14,7 @@ export default () => {
     error,
     dishes: { TODO, DONE, HISTORY }
   } = useDishes();
+
   const [addDishInputValue, setAddDishInputValue] = useState("");
 
   const { register, handleSubmit, errors } = useForm();
@@ -115,26 +68,5 @@ export default () => {
         <input type="submit" />
       </form>
     </div>
-  );
-};
-
-const Dish = ({ dish, onClick }) => {
-  const { id, title, content, status } = dish;
-  const { color, nextStatus } = {
-    TODO: { color: "blue", nextStatus: "DONE" },
-    DONE: { color: "green", nextStatus: "HISTORY" },
-    HISTORY: { color: "red", nextStatus: null }
-  }[status];
-
-  return (
-    <li
-      css={{
-        color
-      }}
-    >
-      {title}
-      {JSON.stringify(content, null, 2)}
-      <button onClick={() => onClick(id, nextStatus)}>{status}</button>
-    </li>
   );
 };
