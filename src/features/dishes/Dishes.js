@@ -1,14 +1,27 @@
-import { useState, useLayoutEffect, useEffect } from "react";
+import { useState, useEffect, useReducer } from "react";
+import { groupBy, prop } from "ramda";
 /** @jsx jsx */
 import { jsx } from "@emotion/core";
 import { concat } from "ramda";
-import dishes$ from "./../../store";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import { useForm } from "react-hook-form";
 
 import { ALL_DISHES, ADD_DISH, CHANGE_STATUS } from "./Dishes.graphql";
 
-export default () => {
+const initialState = { TODO: [], DONE: [], HISTORY: [] };
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "update":
+      return groupBy(prop("status"), action.payload);
+    // case 'addDish':
+    //   return mergeWith(concat, state, groupBy(prop('status'))([action.payload]))
+    default:
+      throw new Error();
+  }
+};
+
+const useDishes = () => {
   const updateCache = (cache, { data }) => {
     const existingDishes = cache.readQuery({
       query: ALL_DISHES
@@ -21,21 +34,39 @@ export default () => {
       data: { dishes: [newDish, ...existingDishes.dishes] }
     });
   };
-  const [addDishInputValue, setAddDishInputValue] = useState("");
-  const [dishes, setDishes] = useState(dishes$.initialState);
-
-  const { data: dishData, loading } = useQuery(ALL_DISHES);
+  const [dishes, dispatch] = useReducer(reducer, initialState);
+  const { data, loading, error } = useQuery(ALL_DISHES);
   const [addDish] = useMutation(ADD_DISH, { update: updateCache });
   const [changeStatus] = useMutation(CHANGE_STATUS);
 
-  const { TODO, DONE, HISTORY } = dishes;
+  useEffect(() => {
+    if (!loading && data && data.dishes) {
+      console.log(data, loading);
+      dispatch({ type: "update", payload: data.dishes });
+    }
+  }, [loading, data]);
+
+  return {
+    addDish,
+    changeStatus,
+    dishes,
+    loading,
+    error
+  };
+};
+export default () => {
+  const {
+    addDish,
+    changeStatus,
+    loading,
+    error,
+    dishes: { TODO, DONE, HISTORY }
+  } = useDishes();
+  const [addDishInputValue, setAddDishInputValue] = useState("");
+
   const { register, handleSubmit, errors } = useForm();
 
-  console.log("state changed", dishes);
-
   const onSubmit = ({ addDishInput }) => {
-    // TODO: change id to current login user
-
     addDish({
       variables: {
         authorId: "ck5lgp68800090746h4ychbxb",
@@ -54,27 +85,15 @@ export default () => {
       }
     });
   };
-
-  useLayoutEffect(() => {
-    console.log("useLayoutEffect");
-    dishes$.init();
-    dishes$.subscribe(setDishes);
-  }, []);
-
-  useEffect(() => {
-    console.log(dishData);
-    if (!loading && dishData && dishData.dishes) {
-      console.log("updateDishes");
-      dishes$.updateDishes(dishData.dishes);
-    }
-  }, [dishData, loading]);
-
+  if (loading || error) {
+    return <h3>loading or error</h3>;
+  }
   return (
     <div>
       <h1>FAMILY DISHES</h1>
       <h3>dishes that is in todo and done</h3>
       <ul>
-        {concat(TODO || [], DONE || []).map(dish => (
+        {concat(TODO, DONE).map(dish => (
           <Dish key={dish.id} onClick={onClickStatus} dish={dish} />
         ))}
       </ul>
